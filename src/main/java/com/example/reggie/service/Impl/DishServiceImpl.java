@@ -2,7 +2,9 @@ package com.example.reggie.service.Impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.reggie.common.CustomException;
 import com.example.reggie.dto.DishDto;
 import com.example.reggie.entity.Dish;
 import com.example.reggie.entity.DishFlavor;
@@ -94,12 +96,20 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
     }
 
     @Override
-    public void deleteWithFlavor(Long id) {
+    @Transactional
+    public void deleteWithFlavor(List<Long> ids) {
         //删除dish表的数据
-        this.removeById(id);
+        LambdaQueryWrapper<Dish> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.in(Dish::getId,ids);
+        queryWrapper.eq(Dish::getStatus,1);
+        int count = this.count(queryWrapper);
+        if (count > 0){
+            throw new CustomException("菜品正在售卖中，不能删除");
+        }
+        this.removeByIds(ids);
         //删除dishFlavor表的数据
         LambdaQueryWrapper<DishFlavor> lambdaQueryWrapper = new LambdaQueryWrapper<>();
-        lambdaQueryWrapper.eq(DishFlavor::getDishId,id);
+        lambdaQueryWrapper.in(DishFlavor::getDishId,ids);
         dishFlavorService.remove(lambdaQueryWrapper);
     }
 }

@@ -8,7 +8,6 @@ import com.example.reggie.dto.DishDto;
 import com.example.reggie.entity.Category;
 import com.example.reggie.entity.Dish;
 import com.example.reggie.service.CategoryService;
-import com.example.reggie.service.DishFlavorService;
 import com.example.reggie.service.DishService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -28,8 +27,6 @@ public class DishController {
     @Autowired
     private DishService dishService;
 
-    @Autowired
-    private DishFlavorService dishFlavorService;
 
     @Autowired
     private CategoryService categoryService;
@@ -126,25 +123,41 @@ public class DishController {
     }
 
     /**
-     * 删除菜品
+     * 删除菜品(支持批量删除)
      * @param ids
      * @return
      */
     @DeleteMapping
-    public R<String> delete(Long... ids){
-        for (Long id : ids) {
-            dishService.deleteWithFlavor(id);
-        }
+    public R<String> delete(@RequestParam List<Long> ids){
+        dishService.deleteWithFlavor(ids);
         return R.success("菜品删除成功");
     }
 
+    /**
+     * 菜品起售和停售(支持批量)
+     * @param status
+     * @param ids
+     * @return
+     */
     @PostMapping("/status/{status}")
-    public R<String> status(@PathVariable int status, Long... ids){
-        for (Long id : ids) {
-            LambdaUpdateWrapper<Dish> lambdaUpdateWrapper = new LambdaUpdateWrapper<>();
-            lambdaUpdateWrapper.set(Dish::getStatus,status).eq(Dish::getId,id);
-            dishService.update(lambdaUpdateWrapper);
-        }
+    public R<String> status(@PathVariable int status,@RequestParam List<Long> ids){
+        LambdaUpdateWrapper<Dish> lambdaUpdateWrapper = new LambdaUpdateWrapper<>();
+        lambdaUpdateWrapper.in(Dish::getId,ids);
+        lambdaUpdateWrapper.set(Dish::getStatus,status);
+        dishService.update(lambdaUpdateWrapper);
         return R.success("操作成功");
+    }
+
+    @GetMapping("/list")
+    public R<List<Dish>> list(@RequestParam("categoryId") Long id){
+        //构造条件
+        LambdaQueryWrapper<Dish> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+        lambdaQueryWrapper.eq(Dish::getCategoryId,id);
+        //添加条件,查询状态为1(起售状态)的菜品
+        lambdaQueryWrapper.eq(Dish::getStatus,1);
+        //添加排序条件
+        lambdaQueryWrapper.orderByAsc(Dish::getSort).orderByDesc(Dish::getUpdateTime);
+        List<Dish> list = dishService.list(lambdaQueryWrapper);
+        return R.success(list);
     }
 }
