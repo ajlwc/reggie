@@ -1,0 +1,6 @@
+# Project exclude paths
+/target/
+.idea
+reggie.iml
+员工登录.png
+笔记
